@@ -2,10 +2,12 @@ package samples.aalamir.customcalendar;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.support.v7.internal.view.menu.MenuBuilder;
+import android.support.design.widget.TextInputLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.PopupMenu.OnMenuItemClickListener;
 import android.util.AttributeSet;
@@ -13,8 +15,10 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -27,17 +31,14 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 
-public class CalendarView extends LinearLayout
-{
+public class CalendarView extends LinearLayout {
 	// for logging
 	private static final String LOGTAG = "Calendar View";
 
 	// how many days to show, defaults to six weeks, 42 days
 	private static final int DAYS_COUNT = 42;
-
-	// default date format
-	private static final String DATE_FORMAT = "MMM yyyy";
 
 	// date format
 	private String dateFormat;
@@ -55,30 +56,25 @@ public class CalendarView extends LinearLayout
 	private TextView txtDate;
 	private GridView grid;
 
-	// event dates
-	private HashSet<Date> mEvents;
-
 	// seasons' rainbow
-	int[] rainbow = new int[] { R.color.summer, R.color.fall, R.color.winter, R.color.spring };
+	int[] rainbow = new int[] { R.color.summer, R.color.fall, R.color.winter,
+			R.color.spring };
 
 	// month-season association (northern hemisphere, sorry australia :)
 	int[] monthSeason = new int[] { 2, 2, 3, 3, 3, 0, 0, 0, 1, 1, 1, 2 };
 
 	private Date menuItemDate;
 
-	public CalendarView(Context context)
-	{
+	public CalendarView(Context context) {
 		super(context);
 	}
 
-	public CalendarView(Context context, AttributeSet attrs)
-	{
+	public CalendarView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		initControl(context, attrs);
 	}
 
-	public CalendarView(Context context, AttributeSet attrs, int defStyleAttr)
-	{
+	public CalendarView(Context context, AttributeSet attrs, int defStyleAttr) {
 		super(context, attrs, defStyleAttr);
 		initControl(context, attrs);
 	}
@@ -86,38 +82,34 @@ public class CalendarView extends LinearLayout
 	/**
 	 * Load control xml layout
 	 */
-	private void initControl(Context context, AttributeSet attrs)
-	{
-		LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+	private void initControl(Context context, AttributeSet attrs) {
+		LayoutInflater inflater = (LayoutInflater) context
+				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		inflater.inflate(R.layout.control_calendar, this);
 
 		loadDateFormat(attrs);
 		assignUiElements();
 		assignClickHandlers();
 
-		updateCalendar();
+		updateCalendar(CalendarData.events);
 	}
 
-	private void loadDateFormat(AttributeSet attrs)
-	{
-		TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.CalendarView);
+	private void loadDateFormat(AttributeSet attrs) {
+		TypedArray ta = getContext().obtainStyledAttributes(attrs,
+				R.styleable.CalendarView);
 
-		try
-		{
+		try {
 			// try to load provided date format, and fallback to default
 			// otherwise
 			dateFormat = ta.getString(R.styleable.CalendarView_dateFormat);
 			if (dateFormat == null)
-				dateFormat = DATE_FORMAT;
-		}
-		finally
-		{
+				dateFormat = ConstantUtility.DATE_FORMATE;
+		} finally {
 			ta.recycle();
 		}
 	}
 
-	private void assignUiElements()
-	{
+	private void assignUiElements() {
 		// layout is inflated, assign local variables to components
 		header = (LinearLayout) findViewById(R.id.calendar_header);
 		btnPrev = (ImageView) findViewById(R.id.calendar_prev_button);
@@ -126,129 +118,194 @@ public class CalendarView extends LinearLayout
 		grid = (GridView) findViewById(R.id.calendar_grid);
 	}
 
-	private void assignClickHandlers()
-	{
+	private void assignClickHandlers() {
 		// add one month and refresh UI
-		btnNext.setOnClickListener(new OnClickListener()
-		{
+		btnNext.setOnClickListener(new OnClickListener() {
 			@Override
-			public void onClick(View v)
-			{
+			public void onClick(View v) {
 				currentDate.add(Calendar.MONTH, 1);
-				updateCalendar();
+				updateCalendar(CalendarData.events);
 			}
 		});
 
 		// subtract one month and refresh UI
-		btnPrev.setOnClickListener(new OnClickListener()
-		{
+		btnPrev.setOnClickListener(new OnClickListener() {
 			@Override
-			public void onClick(View v)
-			{
+			public void onClick(View v) {
 				currentDate.add(Calendar.MONTH, -1);
-				updateCalendar();
+				updateCalendar(CalendarData.events);
 			}
 		});
 
 		// click-pressing on check day having event or not
-		grid.setOnItemClickListener(new AdapterView.OnItemClickListener()
-		{
+		grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 			@Override
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id)
-			{
+			public void onItemClick(AdapterView<?> parent, View view,
+					int position, long id) {
 				// TODO Auto-generated method stub
-				Date dt=(Date) parent.getItemAtPosition(position);
-				for (Date mDate : mEvents)
-				{
-					if (dt.getDay() == mDate.getDay() &&dt.getMonth() == mDate.getMonth() && dt.getYear() == mDate.getYear())
-					{
-						Toast.makeText(getContext(), "This is event", Toast.LENGTH_SHORT).show();
-						break;
-					}
-				}
-			}			
-		});
-		
-		// long-pressing a day
-		grid.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener()
-		{
-			@Override
-			public boolean onItemLongClick(AdapterView<?> view, View cell, int position, long id)
-			{
-				callContextMenu(getContext(), (Date) view.getItemAtPosition(position), cell);
-				// // handle long-press
-				// if (eventHandler == null)
-				// return false;
-				//
-				// eventHandler.onDayLongPress((Date)view.getItemAtPosition(position),cell);
-				return true;
+				Date dt = (Date) parent.getItemAtPosition(position);
+
+				addEventDialog(dt);
+
+				// for (CalendarData calObj : CalendarData.events) {
+				// if (ConstantUtility.dateCompare(dt, calObj.getEventDate())) {
+				// Toast.makeText(getContext(), calObj.getEventTitle(),
+				// Toast.LENGTH_SHORT).show();
+				// break;
+				// }
+				// }
 			}
 		});
+
+		// long-pressing a day
+		// grid.setOnItemLongClickListener(new
+		// AdapterView.OnItemLongClickListener() {
+		// @Override
+		// public boolean onItemLongClick(AdapterView<?> view, View cell,
+		// int position, long id) {
+		// callContextMenu(getContext(),
+		// (Date) view.getItemAtPosition(position), cell);
+		// // // handle long-press
+		// // if (eventHandler == null)
+		// // return false;
+		// //
+		// //
+		// eventHandler.onDayLongPress((Date)view.getItemAtPosition(position),cell);
+		// return true;
+		// }
+		// });
 	}
 
-	OnMenuItemClickListener menuItemClickList = new OnMenuItemClickListener()
-	{
+	OnMenuItemClickListener menuItemClickList = new OnMenuItemClickListener() {
 
 		@Override
-		public boolean onMenuItemClick(MenuItem item)
-		{
+		public boolean onMenuItemClick(MenuItem item) {
 			// TODO Auto-generated
 			// method stub
-			if (item.getItemId() == R.id.overflow_add)
-			{
-				Toast.makeText(getContext(), "add", Toast.LENGTH_SHORT).show();
-				mEvents.add(menuItemDate);
-				updateCalendar(mEvents);
-			}
-			else
-			{
-				Toast.makeText(getContext(), "delete", Toast.LENGTH_SHORT).show();
-				for (Date mDate : mEvents)
-				{
-					if (menuItemDate.getDay() == mDate.getDay() && menuItemDate.getMonth() == mDate.getMonth() && menuItemDate.getYear() == mDate.getYear())
-					{
-						mEvents.remove(mDate);
+			if (item.getItemId() == R.id.overflow_add) {
+				addEventDialog(null);
+			} else {
+				for (CalendarData calObj : CalendarData.events) {
+					if (ConstantUtility.dateCompare(calObj.getEventDate(),
+							menuItemDate)) {
+						CalendarData.events.remove(calObj);
 						break;
 					}
 				}
-				updateCalendar(mEvents);
+				updateCalendar(CalendarData.events);
+
+				Toast.makeText(getContext(), "delete", Toast.LENGTH_SHORT)
+						.show();
 			}
 			return false;
 		}
 	};
 
-	protected void callContextMenu(Context mContext, Date date, View v)
-	{
+	private void addEventDialog(Date dt) {
+		Calendar cal=Calendar.getInstance();
+		cal.setTime(dt);
+		SimpleDateFormat sdf = new SimpleDateFormat("dd MMM");	
+		
+		AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+
+		LayoutInflater inflater = LayoutInflater.from(getContext());
+
+		View dialogView = inflater.inflate(R.layout.alert_dialog, null);
+		builder.setView(dialogView);
+		TextView txtYear = (TextView) dialogView.findViewById(R.id.txt_year);
+		txtYear.setText(String.valueOf(cal.get(Calendar.YEAR)));
+		TextView txtDate = (TextView) dialogView.findViewById(R.id.txt_date);
+		txtDate.setText(String.valueOf(sdf.format(cal.getTime())));
+		final TextInputLayout inputTitle = (TextInputLayout) dialogView
+				.findViewById(R.id.input_event_title);
+		final TextInputLayout inputDesc = (TextInputLayout) dialogView
+				.findViewById(R.id.input_event_desc);
+		final EditText title = (EditText) dialogView
+				.findViewById(R.id.event_title);
+		final EditText desc = (EditText) dialogView
+				.findViewById(R.id.event_desc);
+
+		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				// positive button logic
+				if (title.getText().toString().trim().isEmpty()) {
+					inputTitle.setError(getResources().getString(
+							R.string.error_event_title));
+					requestFocus(title);
+					return;
+				} else {
+					inputTitle.setErrorEnabled(false);
+				}
+
+				if (desc.getText().toString().trim().isEmpty()) {
+					inputDesc.setError(getResources().getString(
+							R.string.error_event_desc));
+					requestFocus(desc);
+					return;
+				} else {
+					inputDesc.setErrorEnabled(false);
+				}
+
+				CalendarData cal = new CalendarData();
+				cal.setEventTitle(title.getText().toString());
+				cal.setEventDesc(desc.getText().toString());
+				cal.setEventDate(menuItemDate);
+				CalendarData.events.add(cal);
+				updateCalendar(CalendarData.events);
+
+				Toast.makeText(getContext(),
+						"event added on " + menuItemDate.toString(),
+						Toast.LENGTH_SHORT).show();
+			}
+		});
+
+		builder.setNegativeButton("Cancel",
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						// negative button logic
+					}
+				});
+
+		AlertDialog dialog = builder.create();
+		// display dialog
+		dialog.show();
+	}
+
+	private void requestFocus(View view) {
+		if (view.requestFocus()) {
+			((Activity) getContext()).getWindow().setSoftInputMode(
+					WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+		}
+	}
+
+	protected void callContextMenu(Context mContext, Date date, View v) {
 		// TODO Auto-generated method stub
 		// This is an android.support.v7.widget.PopupMenu;
 		PopupMenu popupMenu = new PopupMenu(mContext, v);
 		popupMenu.inflate(R.menu.overflow_menu);
 		menuItemDate = date;
-		for (Date mDate : mEvents)
-		{
-			if (date.getDay() == mDate.getDay() && date.getMonth() == mDate.getMonth() && date.getYear() == mDate.getYear())
-			{
+		for (CalendarData calObj : CalendarData.events) {
+			if (ConstantUtility.dateCompare(calObj.getEventDate(), date)) {
 				popupMenu.getMenu().removeItem(R.id.overflow_add);
 				break;
-			}
-			else
-			{
+			} else {
 				popupMenu.getMenu().removeItem(R.id.overflow_delete);
 			}
 		}
 		// Force icons to show
 		Object menuHelper;
 		Class[] argTypes;
-		try
-		{
+		try {
 			Field fMenuHelper = PopupMenu.class.getDeclaredField("mPopup");
 			fMenuHelper.setAccessible(true);
 			menuHelper = fMenuHelper.get(popupMenu);
 			argTypes = new Class[] { boolean.class };
-			menuHelper.getClass().getDeclaredMethod("setForceShowIcon", argTypes).invoke(menuHelper, true);
-		}
-		catch (Exception e)
-		{
+			menuHelper.getClass()
+					.getDeclaredMethod("setForceShowIcon", argTypes)
+					.invoke(menuHelper, true);
+		} catch (Exception e) {
 
 			popupMenu.show();
 			return;
@@ -260,18 +317,8 @@ public class CalendarView extends LinearLayout
 	/**
 	 * Display dates correctly in grid
 	 */
-	public void updateCalendar()
-	{
-		updateCalendar(mEvents);
-	}
-
-	/**
-	 * Display dates correctly in grid
-	 */
-	public void updateCalendar(HashSet<Date> events)
-	{
-		mEvents = events;
-		ArrayList<Date> cells = new ArrayList<>();
+	public void updateCalendar(List<CalendarData> events) {
+		ArrayList<Date> cells = new ArrayList<Date>();
 		Calendar calendar = (Calendar) currentDate.clone();
 
 		// determine the cell for current month's beginning
@@ -282,14 +329,13 @@ public class CalendarView extends LinearLayout
 		calendar.add(Calendar.DAY_OF_MONTH, -monthBeginningCell);
 
 		// fill cells
-		while (cells.size() < DAYS_COUNT)
-		{
+		while (cells.size() < DAYS_COUNT) {
 			cells.add(calendar.getTime());
 			calendar.add(Calendar.DAY_OF_MONTH, 1);
 		}
 
 		// update grid
-		grid.setAdapter(new CalendarAdapter(getContext(), cells, events));
+		grid.setAdapter(new CalendarAdapter(getContext(), cells, currentDate));
 
 		// update title
 		SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
@@ -303,93 +349,17 @@ public class CalendarView extends LinearLayout
 		header.setBackgroundColor(getResources().getColor(color));
 	}
 
-	private class CalendarAdapter extends ArrayAdapter<Date>
-	{
-		// days with events
-		private HashSet<Date> eventDays;
-
-		// for view inflation
-		private LayoutInflater inflater;
-
-		public CalendarAdapter(Context context, ArrayList<Date> days, HashSet<Date> eventDays)
-		{
-			super(context, R.layout.control_calendar_day, days);
-			this.eventDays = eventDays;
-			inflater = LayoutInflater.from(context);
-		}
-
-		@Override
-		public View getView(int position, View view, ViewGroup parent)
-		{
-			// day in question
-			Date date = getItem(position);
-			int day = date.getDate();
-			int month = date.getMonth();
-			int year = date.getYear();
-
-			// today
-			Date today = new Date();
-
-			// inflate item if it does not exist yet
-			if (view == null)
-				view = inflater.inflate(R.layout.control_calendar_day, parent, false);
-
-			// if this day has an event, specify event image
-			view.setBackgroundResource(0);
-			if (eventDays != null)
-			{
-				for (Date eventDate : eventDays)
-				{
-					if (eventDate.getDate() == day && eventDate.getMonth() == month && eventDate.getYear() == year)
-					{
-						// mark this day for event
-						view.setBackgroundResource(R.drawable.circle_shadow);
-						// break;
-					}
-				}
-			}
-
-			((TextView) view).setTypeface(null, Typeface.NORMAL);
-			((TextView) view).setTextColor(getResources().getColor(R.color.greyed_out));
-
-			// if (month != today.getMonth() || year != today.getYear())
-			// {
-			// // if this day is outside current month, grey it out
-			// ((TextView)view).setTextColor(getResources().getColor(R.color.greyed_out));
-			// }
-			if (month == currentDate.get(Calendar.MONTH))
-			{
-				// clear styling
-				((TextView) view).setTypeface(null, Typeface.NORMAL);
-				((TextView) view).setTextColor(Color.BLACK);
-			}
-			else if (day == today.getDate())
-			{
-				// if it is today, set it to blue/bold
-				((TextView) view).setTypeface(null, Typeface.BOLD);
-				((TextView) view).setTextColor(getResources().getColor(R.color.today));
-			}
-
-			// set text
-			((TextView) view).setText(String.valueOf(date.getDate()));
-
-			return view;
-		}
-	}
-
 	/**
 	 * Assign event handler to be passed needed events
 	 */
-	public void setEventHandler(EventHandler eventHandler)
-	{
+	public void setEventHandler(EventHandler eventHandler) {
 		this.eventHandler = eventHandler;
 	}
 
 	/**
 	 * This interface defines what events to be reported to the outside world
 	 */
-	public interface EventHandler
-	{
+	public interface EventHandler {
 		void onDayLongPress(Date date, View view);
 	}
 }

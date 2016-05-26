@@ -4,5 +4,14 @@
     <string name="app_name">calander</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    
+    
+    <string name="dialog_title">Please enter valid event name</string>
+    
+    <string name="hint_event_title">Event Title</string>
+    <string name="hint_event_desc">Event Description</string>
 
+    <string name="error_event_title">Please enter valid event name</string>
+    <string name="error_event_desc">Please enter valid event description</string>
+    
 </resources>

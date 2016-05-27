@@ -6,11 +6,18 @@ import java.util.List;
 
 public class CalendarData {
 	
+	public enum EventType
+	{
+		Exam,
+		Event,
+		Holiday
+	}
+	
 	public static List<CalendarData> events= new ArrayList<CalendarData>();
 	
 	private String eventId;
 	private String eventTitle;
-	private String eventType;
+	private EventType eventType;
 	private String eventDesc;
 	private Date eventDate;
 	
@@ -32,10 +39,10 @@ public class CalendarData {
 	public void setEventTitle(String eventTitle) {
 		this.eventTitle = eventTitle;
 	}
-	public String getEventType() {
+	public EventType getEventType() {
 		return eventType;
 	}
-	public void setEventType(String eventType) {
+	public void setEventType(EventType eventType) {
 		this.eventType = eventType;
 	}
 	public String getEventDesc() {

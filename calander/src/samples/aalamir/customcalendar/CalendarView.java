@@ -4,8 +4,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.media.Image;
 import android.support.design.widget.TextInputLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.PopupMenu;
@@ -22,6 +25,8 @@ import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,6 +37,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+
+import samples.aalamir.customcalendar.CalendarData.EventType;
 
 public class CalendarView extends LinearLayout {
 	// for logging
@@ -145,6 +152,12 @@ public class CalendarView extends LinearLayout {
 				// TODO Auto-generated method stub
 				Date dt = (Date) parent.getItemAtPosition(position);
 
+				for (CalendarData calObj : CalendarData.events) {
+					if (ConstantUtility.dateCompare(calObj.getEventDate(), dt)) {
+						viewEventDialog(calObj);
+						return;
+					}
+				}
 				addEventDialog(dt);
 
 				// for (CalendarData calObj : CalendarData.events) {
@@ -158,22 +171,22 @@ public class CalendarView extends LinearLayout {
 		});
 
 		// long-pressing a day
-		// grid.setOnItemLongClickListener(new
-		// AdapterView.OnItemLongClickListener() {
-		// @Override
-		// public boolean onItemLongClick(AdapterView<?> view, View cell,
-		// int position, long id) {
-		// callContextMenu(getContext(),
-		// (Date) view.getItemAtPosition(position), cell);
-		// // // handle long-press
-		// // if (eventHandler == null)
-		// // return false;
-		// //
-		// //
-		// eventHandler.onDayLongPress((Date)view.getItemAtPosition(position),cell);
-		// return true;
-		// }
-		// });
+		grid.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+			@Override
+			public boolean onItemLongClick(AdapterView<?> view, View cell,
+					int position, long id) {
+				callContextMenu(getContext(),
+						(Date) view.getItemAtPosition(position), cell);
+				// // handle long-press
+				// if (eventHandler == null)
+				// return false;
+				//
+				//
+				// eventHandler.onDayLongPress(
+				// (Date) view.getItemAtPosition(position), cell);
+				return true;
+			}
+		});
 	}
 
 	OnMenuItemClickListener menuItemClickList = new OnMenuItemClickListener() {
@@ -182,9 +195,9 @@ public class CalendarView extends LinearLayout {
 		public boolean onMenuItemClick(MenuItem item) {
 			// TODO Auto-generated
 			// method stub
-			if (item.getItemId() == R.id.overflow_add) {
-				addEventDialog(null);
-			} else {
+//			if (item.getItemId() == R.id.overflow_add) {
+//				addEventDialog(null);
+//			} else {
 				for (CalendarData calObj : CalendarData.events) {
 					if (ConstantUtility.dateCompare(calObj.getEventDate(),
 							menuItemDate)) {
@@ -196,71 +209,121 @@ public class CalendarView extends LinearLayout {
 
 				Toast.makeText(getContext(), "delete", Toast.LENGTH_SHORT)
 						.show();
-			}
+//			}
 			return false;
 		}
 	};
 
-	private void addEventDialog(Date dt) {
-		Calendar cal=Calendar.getInstance();
-		cal.setTime(dt);
-		SimpleDateFormat sdf = new SimpleDateFormat("dd MMM");	
-		
+	private void viewEventDialog(CalendarData calData) {
+		// TODO Auto-generated method stub
+		SimpleDateFormat sdf = new SimpleDateFormat("dd MMM");
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(calData.getEventDate());
+
+		String mColorCode = ConstantUtility.getColorCodeFromEventType(calData
+				.getEventType());
+
+		// Get the image to be changed from the drawable, drawable-xhdpi,
+		// drawable-hdpi,etc folder.
+		Drawable titalDrawable = getResources().getDrawable(
+				R.drawable.ic_action_ticket);
+		Drawable descDrawable = getResources().getDrawable(
+				R.drawable.ic_action_document);
+
+		Bitmap titalIcon = ConstantUtility.changeImageColor(titalDrawable,
+				mColorCode);
+		Bitmap descIcon = ConstantUtility.changeImageColor(descDrawable,
+				mColorCode);
+
 		AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
 
 		LayoutInflater inflater = LayoutInflater.from(getContext());
 
-		View dialogView = inflater.inflate(R.layout.alert_dialog, null);
+		View dialogView = inflater.inflate(R.layout.view_event_dialog, null);
+		builder.setView(dialogView);
+
+		// Change color off upper date view layout
+		LinearLayout dateLayout = (LinearLayout) dialogView
+				.findViewById(R.id.date_layout);
+		dateLayout.setBackgroundColor(Color.parseColor(mColorCode));
+
+		// Display year
+		ImageView imgViewTitle = (ImageView) dialogView
+				.findViewById(R.id.imageView1);
+		imgViewTitle.setImageBitmap(titalIcon);
+		TextView txtYear = (TextView) dialogView.findViewById(R.id.txt_year);
+		txtYear.setText(String.valueOf(calendar.get(Calendar.YEAR)));
+
+		// Display date with month
+		ImageView imgViewDesc = (ImageView) dialogView
+				.findViewById(R.id.imageView2);
+		imgViewDesc.setImageBitmap(descIcon);
+		TextView txtDate = (TextView) dialogView.findViewById(R.id.txt_date);
+		txtDate.setText(String.valueOf(sdf.format(calendar.getTime())));
+
+		// Title/Description drawable and it's text
+		TextView title = (TextView) dialogView.findViewById(R.id.txt_title);
+		title.setText(calData.getEventTitle());
+		TextView desc = (TextView) dialogView.findViewById(R.id.txt_desc);
+		desc.setText(calData.getEventDesc());
+
+		builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				// positive button logic
+
+			}
+		});
+
+		AlertDialog dialog = builder.create();
+		// display dialog
+		dialog.show();
+	}
+
+	private void addEventDialog(final Date dt) {
+		SimpleDateFormat sdf = new SimpleDateFormat("dd MMM");
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(dt);
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+
+		LayoutInflater inflater = LayoutInflater.from(getContext());
+
+		View dialogView = inflater.inflate(R.layout.add_event_dialog, null);
 		builder.setView(dialogView);
 		TextView txtYear = (TextView) dialogView.findViewById(R.id.txt_year);
-		txtYear.setText(String.valueOf(cal.get(Calendar.YEAR)));
+		txtYear.setText(String.valueOf(calendar.get(Calendar.YEAR)));
 		TextView txtDate = (TextView) dialogView.findViewById(R.id.txt_date);
-		txtDate.setText(String.valueOf(sdf.format(cal.getTime())));
-		final TextInputLayout inputTitle = (TextInputLayout) dialogView
-				.findViewById(R.id.input_event_title);
-		final TextInputLayout inputDesc = (TextInputLayout) dialogView
-				.findViewById(R.id.input_event_desc);
+		txtDate.setText(String.valueOf(sdf.format(calendar.getTime())));
+		final RadioGroup rbgroup = (RadioGroup) dialogView
+				.findViewById(R.id.rbGroup);
+		// final RadioButton btn1 = (RadioButton) dialogView
+		// .findViewById(R.id.rbType1);
+		// final RadioButton btn2 = (RadioButton) dialogView
+		// .findViewById(R.id.rbType2);
+		// final RadioButton btn3 = (RadioButton) dialogView
+		// .findViewById(R.id.rbType3);
+		//
+		// final TextInputLayout inputTitle = (TextInputLayout) dialogView
+		// .findViewById(R.id.input_event_title);
+		// final TextInputLayout inputDesc = (TextInputLayout) dialogView
+		// .findViewById(R.id.input_event_desc);
 		final EditText title = (EditText) dialogView
 				.findViewById(R.id.event_title);
 		final EditText desc = (EditText) dialogView
 				.findViewById(R.id.event_desc);
+		builder.setCancelable(false);
+		builder.setPositiveButton("Add-Event",
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						// positive button logic
+						
+					}
+				});
 
-		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface dialog, int which) {
-				// positive button logic
-				if (title.getText().toString().trim().isEmpty()) {
-					inputTitle.setError(getResources().getString(
-							R.string.error_event_title));
-					requestFocus(title);
-					return;
-				} else {
-					inputTitle.setErrorEnabled(false);
-				}
 
-				if (desc.getText().toString().trim().isEmpty()) {
-					inputDesc.setError(getResources().getString(
-							R.string.error_event_desc));
-					requestFocus(desc);
-					return;
-				} else {
-					inputDesc.setErrorEnabled(false);
-				}
-
-				CalendarData cal = new CalendarData();
-				cal.setEventTitle(title.getText().toString());
-				cal.setEventDesc(desc.getText().toString());
-				cal.setEventDate(menuItemDate);
-				CalendarData.events.add(cal);
-				updateCalendar(CalendarData.events);
-
-				Toast.makeText(getContext(),
-						"event added on " + menuItemDate.toString(),
-						Toast.LENGTH_SHORT).show();
-			}
-		});
-
-		builder.setNegativeButton("Cancel",
+		builder.setNegativeButton("Cancel-Event",
 				new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
@@ -268,9 +331,59 @@ public class CalendarView extends LinearLayout {
 					}
 				});
 
-		AlertDialog dialog = builder.create();
+		final AlertDialog dialog = builder.create();
 		// display dialog
 		dialog.show();
+		
+
+		// Overriding the handler immediately after show is probably a better
+		// approach than OnShowListener as described below
+		dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(
+				new View.OnClickListener() {
+					@Override
+					public void onClick(View v) {
+						// Do stuff, possibly set wantToCloseDialog to true
+						// then...
+						if (title.getText().toString().trim().isEmpty()) {
+							title.setError(getResources().getString(
+									R.string.error_event_title));
+							return;
+						} else {
+							title.setError(null);
+						}
+
+						if (desc.getText().toString().trim().isEmpty()) {
+							desc.setError(getResources().getString(
+									R.string.error_event_desc));
+							return;
+						} else {
+							desc.setError(null);
+						}
+
+						int selectedId = rbgroup.getCheckedRadioButtonId();
+
+						CalendarData cal = new CalendarData();
+						cal.setEventTitle(title.getText().toString());
+
+						if (selectedId == R.id.rbType2)
+							cal.setEventType(EventType.Exam);
+						else if (selectedId == R.id.rbType3)
+							cal.setEventType(EventType.Holiday);
+						else
+							cal.setEventType(EventType.Event);
+
+						cal.setEventDesc(desc.getText().toString());
+						cal.setEventDate(dt);
+
+						CalendarData.events.add(cal);
+						updateCalendar(CalendarData.events);
+
+						Toast.makeText(getContext(),
+								"event added on " + dt.toString(),
+								Toast.LENGTH_SHORT).show();
+						dialog.dismiss();
+					}
+				});
 	}
 
 	private void requestFocus(View view) {
@@ -286,12 +399,11 @@ public class CalendarView extends LinearLayout {
 		PopupMenu popupMenu = new PopupMenu(mContext, v);
 		popupMenu.inflate(R.menu.overflow_menu);
 		menuItemDate = date;
+		popupMenu.getMenu().removeItem(R.id.overflow_delete);
 		for (CalendarData calObj : CalendarData.events) {
 			if (ConstantUtility.dateCompare(calObj.getEventDate(), date)) {
-				popupMenu.getMenu().removeItem(R.id.overflow_add);
+				popupMenu.getMenu().add(1, R.id.overflow_delete, 1, "remove");
 				break;
-			} else {
-				popupMenu.getMenu().removeItem(R.id.overflow_delete);
 			}
 		}
 		// Force icons to show

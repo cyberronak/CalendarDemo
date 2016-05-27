@@ -12,6 +12,7 @@
     <string name="hint_event_desc">Event Description</string>
 
     <string name="error_event_title">Please enter valid event name</string>
+    <string name="error_event_type">Please select type</string>
     <string name="error_event_desc">Please enter valid event description</string>
     
 </resources>

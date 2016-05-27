@@ -9,6 +9,7 @@ import java.util.List;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -65,8 +66,11 @@ public class CalendarAdapter extends ArrayAdapter<Date>
 			{
 				if (ConstantUtility.dateCompare(calObj.getEventDate(), date))
 				{
+					String mColorCode = ConstantUtility.getColorCodeFromEventType(calObj.getEventType());
 					// mark this day for event
 					view.setBackgroundResource(R.drawable.bg_round);
+					GradientDrawable bgShape = (GradientDrawable)view.getBackground();
+					bgShape.setColor(Color.parseColor(mColorCode));
 					// break;
 				}
 			}
@@ -86,7 +90,8 @@ public class CalendarAdapter extends ArrayAdapter<Date>
 		{
 			// if it is today, set it to blue/bold
 			((TextView) view).setTypeface(null, Typeface.BOLD);
-			((TextView) view).setTextColor(mContext.getResources().getColor(R.color.today));
+			((TextView) view).setBackgroundResource(R.drawable.bg_rect);
+//			((TextView) view).setTextColor(mContext.getResources().getColor(R.color.today));
 		}
 
 		// set text
